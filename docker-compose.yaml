@@ -1,0 +1,43 @@
+version: "3.8"
+services:
+  nginx:
+    build: ./nginx
+    ports:
+      - "${HTTP_PORT}:80"
+      - "${HTTPS_PORT}:443"
+    volumes:
+      - ./certs:/etc/nginx/certs
+    depends_on:
+      - backend
+    environment:
+      - HTTP_PORT=${HTTP_PORT}
+      - HTTPS_PORT=${HTTPS_PORT}
+      - DOMAIN_NAME=${DOMAIN_NAME}
+      - SSL_CERT_NAME=${SSL_CERT_NAME}
+      - SSL_CERT_KEY_NAME=${SSL_CERT_KEY_NAME}
+
+  backend:
+    build: ./backend/app
+    command: uvicorn app.main:app --reload --host ${AUTH_SERVICE_HOST} --port 8000
+    volumes:
+      - ./backend/app:/usr/src/app/app
+    ports:
+      - "${AUTH_SERVICE_PORT}:8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}
+
+  db:
+    image: postgres
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+volumes:
+  postgres_data:
